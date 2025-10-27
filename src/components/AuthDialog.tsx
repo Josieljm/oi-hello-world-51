@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,7 @@ interface AuthDialogProps {
 }
 
 export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState("");
@@ -118,6 +120,8 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
           onOpenChange(false);
           setEmail("");
           setPassword("");
+          // Redirecionar para o dashboard após login
+          navigate("/dashboard");
         }
       } else {
         const { error } = await supabase.auth.signUp({
@@ -139,6 +143,8 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
           onOpenChange(false);
           setEmail("");
           setPassword("");
+          // Redirecionar para o dashboard após criar conta
+          navigate("/dashboard");
         }
       }
     } catch (error) {
