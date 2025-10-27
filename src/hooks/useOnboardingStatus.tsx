@@ -10,11 +10,20 @@ export const useOnboardingStatus = () => {
   useEffect(() => {
     const checkOnboardingStatus = async () => {
       if (!user) {
-        setOnboardingCompleted(false);
+        setOnboardingCompleted(null);
         setLoading(false);
         return;
       }
 
+      // 1️⃣ Primeiro tenta ler do localStorage
+      const stored = localStorage.getItem('onboardingCompleted');
+      if (stored === 'true') {
+        setOnboardingCompleted(true);
+        setLoading(false);
+        return;
+      }
+
+      // 2️⃣ Busca do backend (caso ainda não esteja salvo)
       try {
         const { data, error } = await supabase
           .from('profiles')
@@ -24,11 +33,13 @@ export const useOnboardingStatus = () => {
 
         if (error) {
           console.error('Erro ao buscar status do onboarding:', error);
-          // Fallback para localStorage
-          const localStatus = localStorage.getItem('onboardingCompleted') === 'true';
-          setOnboardingCompleted(localStatus);
+          setOnboardingCompleted(false);
         } else {
-          setOnboardingCompleted(data?.onboarding_completed || false);
+          const completed = data?.onboarding_completed || false;
+          setOnboardingCompleted(completed);
+          
+          // 3️⃣ Salva localmente para futuros logins
+          localStorage.setItem('onboardingCompleted', completed ? 'true' : 'false');
         }
       } catch (error) {
         console.error('Erro ao verificar onboarding:', error);
@@ -41,5 +52,5 @@ export const useOnboardingStatus = () => {
     checkOnboardingStatus();
   }, [user]);
 
-  return { onboardingCompleted, loading };
+  return { onboardingCompleted, loading, setOnboardingCompleted };
 };

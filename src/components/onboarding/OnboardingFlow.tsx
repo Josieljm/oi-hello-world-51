@@ -85,7 +85,7 @@ const OnboardingFlow = () => {
           return;
         }
 
-        // Também manter no localStorage como backup
+        // Salvar dados completos no localStorage
         const completeUserData = {
           name: data.name,
           age: age,
@@ -109,7 +109,9 @@ const OnboardingFlow = () => {
         };
         
         localStorage.setItem('userData', JSON.stringify(completeUserData));
+        // ✅ Persistir onboarding completo
         localStorage.setItem('onboardingCompleted', 'true');
+        
         toast.success("Dados salvos com sucesso!");
         navigate('/dashboard');
       } catch (error) {
