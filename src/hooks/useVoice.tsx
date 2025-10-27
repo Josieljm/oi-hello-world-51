@@ -9,7 +9,15 @@ export const useVoice = () => {
   const speak = async (text: string, gender: 'male' | 'female' = 'male') => {
     if (!text || isPlaying) return;
 
+    // Verificar se outra voz já está tocando (previne duplicação)
+    const globalPlaying = sessionStorage.getItem('voice_playing') === 'true';
+    if (globalPlaying) {
+      console.log('Outra voz já está tocando, aguardando...');
+      return;
+    }
+
     setIsLoading(true);
+    sessionStorage.setItem('voice_playing', 'true');
     
     try {
       console.log('Requesting speech for:', { text, gender });
@@ -42,10 +50,12 @@ export const useVoice = () => {
       audio.onplay = () => setIsPlaying(true);
       audio.onended = () => {
         setIsPlaying(false);
+        sessionStorage.removeItem('voice_playing');
         URL.revokeObjectURL(url);
       };
       audio.onerror = () => {
         setIsPlaying(false);
+        sessionStorage.removeItem('voice_playing');
         URL.revokeObjectURL(url);
         toast.error('Erro ao reproduzir áudio');
       };
@@ -54,6 +64,7 @@ export const useVoice = () => {
       console.log('Audio playing successfully');
     } catch (error) {
       console.error('Error in speak function:', error);
+      sessionStorage.removeItem('voice_playing');
       toast.error('Erro ao gerar voz');
     } finally {
       setIsLoading(false);
