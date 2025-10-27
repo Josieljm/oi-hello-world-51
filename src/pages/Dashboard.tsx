@@ -4,20 +4,16 @@ import { GymCard } from "@/components/GymCard";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Calendar, Clock as ClockIcon, Target, Flame, Droplets, Zap, Plus, TrendingUp } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMotivationalMessage } from "@/hooks/useMotivationalMessage";
 import { WelcomeVoice } from "@/components/WelcomeVoice";
-import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
-import { Loader2 } from "lucide-react";
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
-  const { onboardingCompleted, loading: onboardingLoading } = useOnboardingStatus();
+  const { user } = useAuth();
   const [userName, setUserName] = useState<string>('');
   const motivationalMessage = useMotivationalMessage();
   const [nutritionData, setNutritionData] = useState({
@@ -26,35 +22,6 @@ const Dashboard = () => {
     carbs: 0,
     fat: 0
   });
-
-  // Proteção de rota: redirecionar se não autenticado ou onboarding não completo
-  useEffect(() => {
-    if (authLoading || onboardingLoading) return;
-
-    if (!user) {
-      navigate("/");
-      return;
-    }
-
-    if (!onboardingCompleted) {
-      navigate("/onboarding");
-      return;
-    }
-  }, [user, authLoading, onboardingCompleted, onboardingLoading, navigate]);
-
-  // Mostrar loading enquanto verifica autenticação
-  if (authLoading || onboardingLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // Não renderizar nada se não estiver autenticado ou onboarding não completo
-  if (!user || !onboardingCompleted) {
-    return null;
-  }
   
   useEffect(() => {
     const loadUserName = async () => {

@@ -14,15 +14,11 @@ export const WelcomeVoice = () => {
 
       try {
         // Buscar gênero e nome do perfil
-        const { data: profile, error } = await supabase
+        const { data: profile } = await supabase
           .from("profiles")
           .select("gender, name")
           .eq("user_id", user.id)
           .maybeSingle();
-
-        if (error) {
-          console.error('Error fetching profile:', error);
-        }
 
         // Fallback para localStorage
         const gender = (profile?.gender as 'male' | 'female') || 
