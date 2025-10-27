@@ -29,13 +29,10 @@ export const useVoice = () => {
       if (error) {
         console.error('Error generating speech:', error);
         
-        // Mensagem específica para API key bloqueada
-        if (error.message?.includes('API_KEY_BLOCKED')) {
-          toast.error('Limite de uso da API de voz atingido. Tente novamente mais tarde.');
-          throw new Error('API_KEY_BLOCKED');
-        }
-        
-        throw error;
+        // Edge function retornou erro - não mostrar toast, será tratado no catch
+        sessionStorage.removeItem('voice_playing');
+        setIsLoading(false);
+        return;
       }
 
       if (!data?.audioContent) {
@@ -72,13 +69,10 @@ export const useVoice = () => {
     } catch (error) {
       console.error('Error in speak function:', error);
       sessionStorage.removeItem('voice_playing');
-      
-      // Não mostrar toast se já foi mostrado antes
-      if (!(error instanceof Error && error.message === 'API_KEY_BLOCKED')) {
-        toast.error('Erro ao gerar voz. Tente novamente.');
-      }
-    } finally {
       setIsLoading(false);
+      
+      // Não mostrar toast para erros de voz - API pode estar temporariamente indisponível
+      // O erro já foi logado no console para debug
     }
   };
 
