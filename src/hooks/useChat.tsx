@@ -231,9 +231,36 @@ export const useChat = () => {
     chatHistoryRef.current = [...chatHistoryRef.current, userMessage];
 
     try {
-      // Analisar intenção e gerar resposta
+      // Analisar intenção para contexto
       const intent = analyzeIntent(content);
-      const aiResponse = generateResponse(content, intent);
+      
+      // Preparar histórico para enviar ao ChatGPT
+      const messagesToSend = chatHistoryRef.current.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+
+      // Chamar a edge function para obter resposta do ChatGPT
+      const NUTRI_AI_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/nutri-ai-chat`;
+      
+      const response = await fetch(NUTRI_AI_CHAT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: messagesToSend,
+          userName: userName,
+          intent: intent.type
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao comunicar com NutriAI');
+      }
+
+      const data = await response.json();
+      const aiResponse = data.message;
       
       // Adicionar resposta do AI
       const aiMessage: Message = { role: 'assistant', content: aiResponse, timestamp: new Date() };
@@ -256,7 +283,7 @@ export const useChat = () => {
     } finally {
       setIsProcessing(false);
     }
-  }, [analyzeIntent, generateResponse, speak, isProcessing, isVoiceLoading]);
+  }, [analyzeIntent, userName, speak, isProcessing, isVoiceLoading]);
 
   // Inicializar conversa
   const startConversation = useCallback(async () => {
