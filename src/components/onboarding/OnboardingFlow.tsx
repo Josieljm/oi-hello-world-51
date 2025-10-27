@@ -73,7 +73,8 @@ const OnboardingFlow = () => {
             age: age,
             weight: data.weight,
             height: data.height,
-            fitness_goal: fitnessGoal
+            fitness_goal: fitnessGoal,
+            onboarding_completed: true
           }, {
             onConflict: 'user_id'
           });

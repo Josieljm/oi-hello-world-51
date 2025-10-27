@@ -1,26 +1,40 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { GymCard } from "@/components/GymCard";
 import { StatCard } from "@/components/StatCard";
 import { Dumbbell, Apple, TrendingUp, Zap, Camera, Users } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import heroImage from "@/assets/hero-fitness.jpg";
 import nutritionImage from "@/assets/nutrition-hero.jpg";
 import workoutsImage from "@/assets/workouts-hero.jpg";
 import { AuthDialog } from "@/components/AuthDialog";
 import { useAuth } from "@/hooks/useAuth";
+import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
 
 const Index = () => {
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const { user } = useAuth();
+  const { onboardingCompleted, loading } = useOnboardingStatus();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Redirecionar para onboarding se não completado
+  useEffect(() => {
+    if (!user || loading) return;
+
+    const currentPath = location.pathname;
+
+    if (!onboardingCompleted && currentPath !== "/onboarding") {
+      navigate("/onboarding");
+    } else if (onboardingCompleted && currentPath === "/onboarding") {
+      navigate("/dashboard");
+    }
+  }, [user, onboardingCompleted, loading, location, navigate]);
 
   const handleProtectedAction = (path: string) => {
     if (user) {
-      // Check if user has completed onboarding
-      const onboardingCompleted = localStorage.getItem('onboardingCompleted');
-      if (!onboardingCompleted && path === '/dashboard') {
-        navigate('/onboarding');
+      if (!onboardingCompleted && path === "/dashboard") {
+        navigate("/onboarding");
       } else {
         navigate(path);
       }
