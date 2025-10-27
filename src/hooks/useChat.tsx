@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { useVoice } from './useVoice';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -92,130 +93,36 @@ export const useChat = () => {
     return { type: 'general' };
   }, []);
 
-  // Gerar resposta contextual baseada na intenção
-  const generateResponse = useCallback((userMessage: string, intent: Intent): string => {
-    const currentTime = new Date().getHours();
-    const timeGreeting = currentTime < 12 ? 'bom dia' : currentTime < 18 ? 'boa tarde' : 'boa noite';
-    
-    switch (intent.type) {
-      case 'set_name':
-        const name = intent.data!;
-        setUserName(name);
-        setConversationContext(prev => ({ ...prev, hasIntroduced: true }));
-        
-        const nameResponses = [
-          `Prazer, ${name}! Agora sou seu NutriAI pessoal! Em que posso ajudar sua nutrição hoje?`,
-          `Que nome lindo, ${name}! Estou aqui para te ajudar com alimentação e saúde. Qual seu objetivo?`,
-          `Oi, ${name}! Sou seu assistente nutricional! Vamos fazer uma jornada incrível juntos!`,
-          `Encantado, ${name}! Pronto para transformar sua alimentação? Como posso ajudar?`
-        ];
-        return nameResponses[Math.floor(Math.random() * nameResponses.length)];
+  // Gerar resposta usando ChatGPT via edge function
+  const generateResponse = useCallback(async (intent: Intent): Promise<string> => {
+    try {
+      // Preparar histórico de mensagens para o ChatGPT
+      const chatMessages = chatHistoryRef.current.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
 
-      case 'greeting':
-        if (userName) {
-          const greetingResponses = [
-            `E aí, ${userName}! Como está seu dia?`,
-            `Oi, ${userName}! Pronto para evoluir hoje?`,
-            `Que bom te ver, ${userName}! No que posso ajudar?`,
-            `${timeGreeting}, ${userName}! Como vai sua energia hoje?`
-          ];
-          return greetingResponses[Math.floor(Math.random() * greetingResponses.length)];
-        } else {
-          const initialGreetings = [
-            `Olá! Eu sou seu NutriAI. Qual é o seu nome?`,
-            `Oi! Sou seu assistente nutricional. Como você se chama?`,
-            `Prazer! Sou seu NutriAI. Qual seu nome para começarmos?`,
-            `Olá! Vamos melhorar sua alimentação juntos! Qual é o seu nome?`
-          ];
-          return initialGreetings[Math.floor(Math.random() * initialGreetings.length)];
+      const { data, error } = await supabase.functions.invoke('nutri-ai-chat', {
+        body: {
+          messages: chatMessages,
+          userName,
+          intent
         }
+      });
 
-      case 'weight_loss':
-        setConversationContext(prev => ({ ...prev, lastObjective: 'weight_loss' }));
-        const weightLossResponses = userName ? [
-          `Perfeito, ${userName}! Para emagrecer: foco em proteínas magras e vegetais! Que tal salmão com aspargos?`,
-          `${userName}, para perder peso: salada de grão-de-bico com atum é ótima! Baixa caloria, muita nutrição!`,
-          `Vamos lá, ${userName}! Para emagrecer: abuse de vegetais verdes e proteínas magras. Frango grelhado com brócolis?`
-        ] : [
-          `Para emagrecer: foco em proteínas magras e vegetais! Salmão com aspargos é uma ótima opção!`,
-          `Emagrecimento saudável: salada de grão-de-bico com atum! Nutritivo e saciante!`,
-          `Dica para perder peso: vegetais verdes e proteínas magras! Frango com brócolis é perfeito!`
-        ];
-        return weightLossResponses[Math.floor(Math.random() * weightLossResponses.length)];
+      if (error) {
+        console.error('Erro ao chamar nutri-ai-chat:', error);
+        throw error;
+      }
 
-      case 'muscle_gain':
-        setConversationContext(prev => ({ ...prev, lastObjective: 'muscle_gain' }));
-        const muscleGainResponses = userName ? [
-          `Excelente, ${userName}! Para ganhar massa: proteína máxima! Frango com batata doce e ovos!`,
-          `${userName}, massa muscular precisa de proteína! Peito de frango com quinoa e abacate!`,
-          `Hora da hipertrofia, ${userName}! Ovos, frango, whey protein - combustível muscular!`
-        ] : [
-          `Para ganhar massa: proteína é fundamental! Frango com batata doce e ovos!`,
-          `Hipertrofia precisa de proteína! Peito de frango com quinoa e vegetais!`,
-          `Massa muscular: foco em proteínas! Ovos, carne, whey - construa músculos!`
-        ];
-        return muscleGainResponses[Math.floor(Math.random() * muscleGainResponses.length)];
+      if (data?.fallback) {
+        return data.fallback;
+      }
 
-      case 'energy':
-        const energyResponses = userName ? [
-          `Energia, ${userName}? Aveia com banana e whey! Combustível perfeito!`,
-          `${userName}, para mais disposição: smoothie de espinafre com gengibre! Revitalizante!`,
-          `Fadiga, ${userName}? Batata doce e frango dão energia duradoura!`
-        ] : [
-          `Para energia: aveia com banana e whey! Combustível premium!`,
-          `Mais disposição: smoothie de espinafre com gengibre! Revitaliza!`,
-          `Energia duradoura: batata doce com proteína! Combustível de qualidade!`
-        ];
-        return energyResponses[Math.floor(Math.random() * energyResponses.length)];
-
-      case 'meal_suggestion':
-        const mealResponses = userName ? [
-          `Claro, ${userName}! Que tal um stir-fry de legumes com frango? Rápido e nutritivo!`,
-          `${userName}, sugestão: peixe assado com legumes! Fácil e super saudável!`,
-          `Pensei em você, ${userName}! Wrap de folhas com homus e vegetais! Delicioso!`
-        ] : [
-          `Sugestão: stir-fry de legumes com frango! Prático e nutritivo!`,
-          `Que tal peixe assado com legumes? Saudável e saboroso!`,
-          `Experimente wrap de folhas com homus! Leve e gostoso!`
-        ];
-        return mealResponses[Math.floor(Math.random() * mealResponses.length)];
-
-      case 'thanks':
-        const thanksResponses = userName ? [
-          `Por nada, ${userName}! Estou aqui sempre que precisar!`,
-          `De nada, ${userName}! Fico feliz em ajudar!`,
-          `Imagina, ${userName}! Qualquer dúvida, estou aqui!`
-        ] : [
-          `Por nada! Estou aqui para ajudar!`,
-          `De nada! Fico feliz em poder ajudar!`,
-          `Imagina! Qualquer coisa, é só chamar!`
-        ];
-        return thanksResponses[Math.floor(Math.random() * thanksResponses.length)];
-
-      case 'date_info':
-        const today = new Date().toLocaleDateString('pt-BR', { 
-          weekday: 'long', 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
-        });
-        return userName ? 
-          `Hoje é ${today}, ${userName}! Dia perfeito para comer bem!` :
-          `Hoje é ${today}! Ótimo dia para focar na nutrição!`;
-
-      default:
-        // Resposta para mensagens não reconhecidas
-        const generalResponses = userName ? [
-          `Interessante, ${userName}! Como isso se relaciona com seus objetivos nutricionais?`,
-          `Hmm, ${userName}... Vamos conectar isso com sua alimentação?`,
-          `Entendi, ${userName}! E como você está se sentindo com sua dieta atual?`,
-          `${userName}, conte mais! Estou aqui para ajudar sua jornada nutricional!`
-        ] : [
-          `Interessante! Como posso ajudar sua nutrição hoje?`,
-          `Hmm, entendi! Vamos focar na sua alimentação?`,
-          `Conte mais! Estou aqui para ajudar com sua dieta e saúde!`
-        ];
-        return generalResponses[Math.floor(Math.random() * generalResponses.length)];
+      return data?.response || 'Desculpe, não consegui processar sua mensagem. Pode tentar novamente?';
+    } catch (error) {
+      console.error('Erro ao gerar resposta:', error);
+      return 'Ops, tive um problema aqui. Vamos tentar de novo?';
     }
   }, [userName]);
 
@@ -231,9 +138,17 @@ export const useChat = () => {
     chatHistoryRef.current = [...chatHistoryRef.current, userMessage];
 
     try {
-      // Analisar intenção e gerar resposta
+      // Analisar intenção
       const intent = analyzeIntent(content);
-      const aiResponse = generateResponse(content, intent);
+      
+      // Processar intenção de nome localmente
+      if (intent.type === 'set_name' && intent.data) {
+        setUserName(intent.data);
+        setConversationContext(prev => ({ ...prev, hasIntroduced: true }));
+      }
+      
+      // Gerar resposta usando ChatGPT
+      const aiResponse = await generateResponse(intent);
       
       // Adicionar resposta do AI
       const aiMessage: Message = { role: 'assistant', content: aiResponse, timestamp: new Date() };
