@@ -13,19 +13,9 @@ export const WelcomeVoice = () => {
       if (!user || hasSpoken) return;
 
       try {
-        // Buscar gênero e nome do perfil
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("gender, name")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        // Fallback para localStorage
-        const gender = (profile?.gender as 'male' | 'female') || 
-                      (localStorage.getItem("userGender") as 'male' | 'female') || 
-                      'male';
-        
-        const name = profile?.name || 'Amigo';
+        // Buscar gênero do localStorage
+        const gender = (localStorage.getItem("userGender") as 'male' | 'female') || 'male';
+        const name = localStorage.getItem("userName") || 'Amigo';
         let firstName = name.split(' ')[0];
 
         // Mensagem de boas-vindas personalizada
