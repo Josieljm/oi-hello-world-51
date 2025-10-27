@@ -10,6 +10,7 @@ import { ThemeSelector } from "@/components/ThemeSelector";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMotivationalMessage } from "@/hooks/useMotivationalMessage";
+import { WelcomeVoice } from "@/components/WelcomeVoice";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -102,6 +103,7 @@ const Dashboard = () => {
 
   return (
     <Layout>
+      <WelcomeVoice />
       <div className="p-4 space-y-6 max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
