@@ -14,6 +14,7 @@ const NutriAI = () => {
   const [conversationStage, setConversationStage] = useState<'start' | 'main'>('start');
   const recognitionRef = useRef<any>(null);
   const [userGender, setUserGender] = useState<'male' | 'female'>('male');
+  const isRecognitionActive = useRef(false);
   const conversationContext = useRef({
     lastTopic: '',
     userGoals: '',
@@ -64,28 +65,34 @@ const NutriAI = () => {
   useEffect(() => {
     if ('webkitSpeechRecognition' in window) {
       const recognition = new (window as any).webkitSpeechRecognition();
-      recognition.continuous = true; // ✅ CONVERSA CONTÍNUA
+      recognition.continuous = true;
       recognition.interimResults = true;
       recognition.lang = 'pt-BR';
       recognition.maxAlternatives = 3;
 
       recognition.onstart = () => {
+        console.log('🎤 Reconhecimento iniciado');
+        isRecognitionActive.current = true;
         setIsListening(true);
       };
 
       recognition.onend = () => {
+        console.log('🔇 Reconhecimento parou');
+        isRecognitionActive.current = false;
         setIsListening(false);
-        // ✅ RECONECTAR AUTOMATICAMENTE
-        if (isActive && !isPlaying) {
+        
+        // ✅ RECONECTAR AUTOMATICAMENTE se ainda estiver ativo
+        if (isActive) {
           setTimeout(() => {
-            if (recognitionRef.current && isActive) {
+            if (recognitionRef.current && isActive && !isRecognitionActive.current) {
               try {
+                console.log('🔄 Reiniciando reconhecimento...');
                 recognitionRef.current.start();
               } catch (e) {
-                // Reconhecimento já ativo
+                console.log('⚠️ Reconhecimento já ativo');
               }
             }
-          }, 500);
+          }, 800);
         }
       };
 
@@ -97,11 +104,14 @@ const NutriAI = () => {
           }
         }
         if (finalTranscript.trim()) {
+          console.log('📝 Texto capturado:', finalTranscript);
           handleUserMessage(finalTranscript);
         }
       };
 
       recognition.onerror = (event: any) => {
+        console.error('❌ Erro no reconhecimento:', event.error);
+        isRecognitionActive.current = false;
         if (event.error === 'not-allowed') {
           alert('Permissão de microfone negada. Ative o microfone para conversar com o NutriAI.');
         }
@@ -109,32 +119,56 @@ const NutriAI = () => {
 
       recognitionRef.current = recognition;
     }
-  }, [isActive, isPlaying]);
+    
+    return () => {
+      if (recognitionRef.current && isRecognitionActive.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, [isActive]);
 
   // ✅ FALA COM ELEVENLABS
   const speakText = async (text: string) => {
     console.log('🔊 NutriAI falando com ElevenLabs...');
     
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
+    // Para o reconhecimento enquanto fala
+    if (recognitionRef.current && isRecognitionActive.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        console.log('⚠️ Erro ao parar reconhecimento');
+      }
     }
 
     try {
       await speak(text, userGender);
-      console.log('🔇 NutriAI terminou de falar');
+      console.log('✅ NutriAI terminou de falar');
       
+      // Reinicia o reconhecimento após falar
       if (isActive && recognitionRef.current) {
-        // ✅ Pausa de 1s antes de reativar microfone (mais natural)
+        setTimeout(() => {
+          if (!isRecognitionActive.current) {
+            try {
+              console.log('🔄 Reativando microfone após fala');
+              recognitionRef.current.start();
+            } catch (e) {
+              console.log('⚠️ Reconhecimento já ativo');
+            }
+          }
+        }, 1200);
+      }
+    } catch (error) {
+      console.error('❌ Erro na fala:', error);
+      // Reinicia reconhecimento mesmo em caso de erro
+      if (isActive && recognitionRef.current && !isRecognitionActive.current) {
         setTimeout(() => {
           try {
             recognitionRef.current.start();
           } catch (e) {
-            console.log('Reconhecimento já ativo');
+            console.log('⚠️ Erro ao reiniciar reconhecimento');
           }
-        }, 1000);
+        }, 500);
       }
-    } catch (error) {
-      console.error('❌ Erro na fala:', error);
     }
   };
 
@@ -196,9 +230,15 @@ const NutriAI = () => {
 
   // ✅ DESATIVAR CORRETAMENTE
   const deactivateNutriAI = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
+    console.log('❌ Desativando NutriAI');
+    if (recognitionRef.current && isRecognitionActive.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        console.log('⚠️ Erro ao parar reconhecimento');
+      }
     }
+    isRecognitionActive.current = false;
     setIsActive(false);
     setIsListening(false);
     setConversation([]);
