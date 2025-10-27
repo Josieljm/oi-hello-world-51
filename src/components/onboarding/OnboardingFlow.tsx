@@ -68,6 +68,7 @@ const OnboardingFlow = () => {
         const { error } = await supabase
           .from('profiles')
           .upsert({
+            id: user.id,
             user_id: user.id,
             name: data.name,
             age: age,
@@ -76,7 +77,7 @@ const OnboardingFlow = () => {
             fitness_goal: fitnessGoal,
             onboarding_completed: true
           }, {
-            onConflict: 'user_id'
+            onConflict: 'id'
           });
 
         if (error) {
