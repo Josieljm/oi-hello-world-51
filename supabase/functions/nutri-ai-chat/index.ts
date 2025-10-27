@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -48,14 +48,14 @@ ${userName ? `O nome do usuário é ${userName}. Use o nome dele ocasionalmente 
 
 IMPORTANTE: Mantenha respostas curtas e diretas. Não seja prolixo.`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
           ...messages
@@ -67,8 +67,8 @@ IMPORTANTE: Mantenha respostas curtas e diretas. Não seja prolixo.`;
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('Erro na API OpenAI:', errorData);
-      throw new Error(`OpenAI API error: ${errorData.error?.message || 'Unknown error'}`);
+      console.error('Erro na API Lovable AI:', errorData);
+      throw new Error(`Lovable AI error: ${errorData.error?.message || 'Unknown error'}`);
     }
 
     const data = await response.json();
