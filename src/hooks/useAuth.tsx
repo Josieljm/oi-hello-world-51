@@ -91,8 +91,6 @@ export function useAuth() {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    // ⚠️ NÃO limpar dados de onboarding no logout
-    // Manter: onboarding_*, userData
   };
 
   return { user, session, loading, signOut };

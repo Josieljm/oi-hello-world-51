@@ -10,13 +10,12 @@ export const useOnboardingStatus = () => {
   useEffect(() => {
     const checkOnboardingStatus = async () => {
       if (!user) {
-        setOnboardingCompleted(null);
+        setOnboardingCompleted(false);
         setLoading(false);
         return;
       }
 
       try {
-        // 🔍 Tentar buscar do backend primeiro
         const { data, error } = await supabase
           .from('profiles')
           .select('onboarding_completed')
@@ -24,22 +23,16 @@ export const useOnboardingStatus = () => {
           .single();
 
         if (error) {
-          console.log('Backend indisponível, usando cache local');
-          // ⚠️ Fallback para localStorage se backend falhar
-          const localStatus = localStorage.getItem(`onboarding_${user.id}`);
-          const completed = localStatus === 'true';
-          setOnboardingCompleted(completed);
+          console.error('Erro ao buscar status do onboarding:', error);
+          // Fallback para localStorage
+          const localStatus = localStorage.getItem('onboardingCompleted') === 'true';
+          setOnboardingCompleted(localStatus);
         } else {
-          // ✅ Backend respondeu - usar e atualizar cache local
-          const completed = !!data?.onboarding_completed;
-          setOnboardingCompleted(completed);
-          localStorage.setItem(`onboarding_${user.id}`, completed ? 'true' : 'false');
+          setOnboardingCompleted(data?.onboarding_completed || false);
         }
       } catch (error) {
         console.error('Erro ao verificar onboarding:', error);
-        // ⚠️ Fallback para localStorage em caso de erro
-        const localStatus = localStorage.getItem(`onboarding_${user.id}`);
-        setOnboardingCompleted(localStatus === 'true');
+        setOnboardingCompleted(false);
       } finally {
         setLoading(false);
       }
@@ -48,5 +41,5 @@ export const useOnboardingStatus = () => {
     checkOnboardingStatus();
   }, [user]);
 
-  return { onboardingCompleted, loading, setOnboardingCompleted };
+  return { onboardingCompleted, loading };
 };

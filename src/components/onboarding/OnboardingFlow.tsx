@@ -64,28 +64,28 @@ const OnboardingFlow = () => {
           return;
         }
 
-        // 💾 Salvar no backend (com try/catch)
-        try {
-          const { error } = await supabase
-            .from('profiles')
-            .update({
-              name: data.name,
-              age: age,
-              weight: data.weight,
-              height: data.height,
-              fitness_goal: fitnessGoal,
-              onboarding_completed: true
-            })
-            .eq('user_id', user.id);
+        // Salvar no Supabase usando upsert para criar ou atualizar
+        const { error } = await supabase
+          .from('profiles')
+          .upsert({
+            user_id: user.id,
+            name: data.name,
+            age: age,
+            weight: data.weight,
+            height: data.height,
+            fitness_goal: fitnessGoal,
+            onboarding_completed: true
+          }, {
+            onConflict: 'user_id'
+          });
 
-          if (error) {
-            console.log('Backend falhou, dados salvos localmente');
-          }
-        } catch (e) {
-          console.log('Erro ao salvar no backend:', e);
+        if (error) {
+          console.error('Erro ao salvar perfil:', error);
+          toast.error("Erro ao salvar dados");
+          return;
         }
 
-        // ✅ SEMPRE salvar localmente como backup
+        // Também manter no localStorage como backup
         const completeUserData = {
           name: data.name,
           age: age,
@@ -109,16 +109,12 @@ const OnboardingFlow = () => {
         };
         
         localStorage.setItem('userData', JSON.stringify(completeUserData));
-        localStorage.setItem(`onboarding_${user.id}`, 'true');
-        
+        localStorage.setItem('onboardingCompleted', 'true');
         toast.success("Dados salvos com sucesso!");
         navigate('/dashboard');
       } catch (error) {
         console.error('Erro ao finalizar onboarding:', error);
-        // Mesmo com erro, salvar localmente
-        localStorage.setItem(`onboarding_${user.id}`, 'true');
-        toast.warning("Dados salvos localmente");
-        navigate('/dashboard');
+        toast.error("Erro ao salvar dados");
       }
     }
   };
