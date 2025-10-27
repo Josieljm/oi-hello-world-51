@@ -16,7 +16,7 @@ export const useOnboardingStatus = () => {
       }
 
       try {
-        // 🔍 1️⃣ Busca direto do backend, sem confiar apenas no localStorage
+        // 🔍 Tentar buscar do backend primeiro
         const { data, error } = await supabase
           .from('profiles')
           .select('onboarding_completed')
@@ -24,20 +24,22 @@ export const useOnboardingStatus = () => {
           .single();
 
         if (error) {
-          console.error('Erro ao buscar status do onboarding:', error);
-          setOnboardingCompleted(false);
-          localStorage.setItem('onboardingCompleted', 'false');
+          console.log('Backend indisponível, usando cache local');
+          // ⚠️ Fallback para localStorage se backend falhar
+          const localStatus = localStorage.getItem(`onboarding_${user.id}`);
+          const completed = localStatus === 'true';
+          setOnboardingCompleted(completed);
         } else {
+          // ✅ Backend respondeu - usar e atualizar cache local
           const completed = !!data?.onboarding_completed;
           setOnboardingCompleted(completed);
-
-          // ✅ Sempre atualiza o localStorage
-          localStorage.setItem('onboardingCompleted', completed ? 'true' : 'false');
+          localStorage.setItem(`onboarding_${user.id}`, completed ? 'true' : 'false');
         }
       } catch (error) {
         console.error('Erro ao verificar onboarding:', error);
-        setOnboardingCompleted(false);
-        localStorage.setItem('onboardingCompleted', 'false');
+        // ⚠️ Fallback para localStorage em caso de erro
+        const localStatus = localStorage.getItem(`onboarding_${user.id}`);
+        setOnboardingCompleted(localStatus === 'true');
       } finally {
         setLoading(false);
       }

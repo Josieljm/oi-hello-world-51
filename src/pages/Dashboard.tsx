@@ -28,11 +28,24 @@ const Dashboard = () => {
 
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('name')
+        .select('name, onboarding_completed')
         .eq('user_id', user.id)
         .maybeSingle();
 
       console.log('Profile data:', profile, 'Error:', error);
+
+      // 🔍 Verificar onboarding e redirecionar se necessário
+      if (profile) {
+        const completed = profile.onboarding_completed;
+        if (!completed) {
+          // Verificar fallback local
+          const localStatus = localStorage.getItem(`onboarding_${user.id}`);
+          if (localStatus !== 'true') {
+            window.location.href = '/onboarding';
+            return;
+          }
+        }
+      }
 
       if (profile?.name) {
         let firstName = profile.name.trim();
