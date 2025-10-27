@@ -57,6 +57,12 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('ElevenLabs API error:', errorText);
+      
+      // Detectar erro específico de atividade suspeita
+      if (response.status === 401 && errorText.includes('detected_unusual_activity')) {
+        throw new Error('API_KEY_BLOCKED');
+      }
+      
       throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
     }
 
