@@ -1,18 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { useVoice } from '@/hooks/useVoice';
 
 const NutriAI = () => {
   const { user } = useAuth();
+  const { speak, isLoading: isVoiceLoading, isPlaying } = useVoice();
   const [isActive, setIsActive] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [conversation, setConversation] = useState<Array<{type: string; text: string; timestamp: Date}>>([]);
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [profileName, setProfileName] = useState<string>('');
   const [userName, setUserName] = useState<string>('');
   const [conversationStage, setConversationStage] = useState<'start' | 'main'>('start');
   const recognitionRef = useRef<any>(null);
-  const [userGender, setUserGender] = useState('male');
+  const [userGender, setUserGender] = useState<'male' | 'female'>('male');
   const conversationContext = useRef({
     lastTopic: '',
     userGoals: '',
@@ -47,7 +48,7 @@ const NutriAI = () => {
   const firstName = getFirstName(profileName);
 
   // ✅ DETECTAR GÊNERO DO USUÁRIO PELO NOME
-  const detectUserGender = (name: string) => {
+  const detectUserGender = (name: string): 'male' | 'female' => {
     const maleNames = ['carlos', 'joão', 'pedro', 'marcos', 'lucas', 'josiel', 'miguel', 'rafael', 
                        'fernando', 'ricardo', 'rodrigo', 'paulo', 'bruno', 'andré', 'felipe'];
     const femaleNames = ['ana', 'maria', 'julia', 'carla', 'patricia', 'fernanda', 'beatriz', 'amanda',
@@ -57,27 +58,6 @@ const NutriAI = () => {
     if (maleNames.includes(cleanName)) return 'male';
     if (femaleNames.includes(cleanName)) return 'female';
     return 'male'; // padrão
-  };
-
-  // ✅ CONFIGURAÇÃO DE VOZ CARISMÁTICA E NATURAL POR GÊNERO
-  const getVoiceSettings = () => {
-    if (userGender === 'male') {
-      return {
-        rate: 0.92,    // Ritmo carismático e envolvente
-        pitch: 0.88,   // Tom masculino agradável
-        volume: 1.0,
-        pauseBetweenPhrases: 0.55,
-        voiceType: 'masculina_humanizada_calma'
-      };
-    } else {
-      return {
-        rate: 0.92,    // Mesma velocidade natural
-        pitch: 1.12,   // Tom feminino agradável
-        volume: 1.0,
-        pauseBetweenPhrases: 0.55,
-        voiceType: 'feminina_humanizada_agradavel'
-      };
-    }
   };
 
   // ✅ CONFIGURAÇÃO AVANÇADA DE VOZ
@@ -96,7 +76,7 @@ const NutriAI = () => {
       recognition.onend = () => {
         setIsListening(false);
         // ✅ RECONECTAR AUTOMATICAMENTE
-        if (isActive && !isSpeaking) {
+        if (isActive && !isPlaying) {
           setTimeout(() => {
             if (recognitionRef.current && isActive) {
               try {
@@ -129,84 +109,33 @@ const NutriAI = () => {
 
       recognitionRef.current = recognition;
     }
-  }, [isActive, isSpeaking]);
+  }, [isActive, isPlaying]);
 
-  // ✅ FALA CARISMÁTICA COM PAUSAS E EMOÇÃO
-  const speakText = (text: string) => {
-    return new Promise<void>((resolve) => {
-      if (!('speechSynthesis' in window)) {
-        resolve();
-        return;
+  // ✅ FALA COM ELEVENLABS
+  const speakText = async (text: string) => {
+    console.log('🔊 NutriAI falando com ElevenLabs...');
+    
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+
+    try {
+      await speak(text, userGender);
+      console.log('🔇 NutriAI terminou de falar');
+      
+      if (isActive && recognitionRef.current) {
+        // ✅ Pausa de 1s antes de reativar microfone (mais natural)
+        setTimeout(() => {
+          try {
+            recognitionRef.current.start();
+          } catch (e) {
+            console.log('Reconhecimento já ativo');
+          }
+        }, 1000);
       }
-
-      window.speechSynthesis.cancel();
-      
-      const utterance = new SpeechSynthesisUtterance();
-      
-      // ✅ CONFIGURAÇÕES PARA VOZ CARISMÁTICA E ENVOLVENTE
-      const voiceSettings = getVoiceSettings();
-      utterance.rate = voiceSettings.rate;
-      utterance.pitch = voiceSettings.pitch;
-      utterance.volume = voiceSettings.volume;
-      utterance.lang = 'pt-BR';
-      
-      // ✅ PAUSAS NATURAIS COM VARIAÇÃO DE INTONAÇÃO
-      const naturalText = text
-        .replace(/\.\.\./g, '... ')  // Pausas reflexivas
-        .replace(/!/g, '! ')         // Ênfase com pausa
-        .replace(/\?/g, '? ')         // Pergunta com pausa
-        .replace(/,/g, ', ')          // Respiração em vírgulas
-        .replace(/\./g, '. ');        // Pausa entre frases
-      
-      utterance.text = naturalText;
-
-      // ✅ TENTAR ENCONTRAR VOZES NATIVAS BRASILEIRAS
-      const voices = window.speechSynthesis.getVoices();
-      const ptVoice = voices.find(voice => 
-        voice.lang.includes('pt') && 
-        ((userGender === 'male' && voice.name.toLowerCase().includes('male')) ||
-         (userGender === 'female' && voice.name.toLowerCase().includes('female')))
-      );
-
-      if (ptVoice) {
-        utterance.voice = ptVoice;
-      }
-
-      utterance.onstart = () => {
-        console.log('🔊 NutriAI falando...');
-        setIsSpeaking(true);
-        if (recognitionRef.current) {
-          recognitionRef.current.stop();
-        }
-      };
-
-      utterance.onend = () => {
-        console.log('🔇 NutriAI terminou de falar');
-        setIsSpeaking(false);
-        if (isActive && recognitionRef.current) {
-          // ✅ Pausa de 0.55s antes de reativar microfone (mais natural)
-          setTimeout(() => {
-            try {
-              recognitionRef.current.start();
-            } catch (e) {
-              console.log('Reconhecimento já ativo');
-            }
-          }, 550);
-        }
-        resolve();
-      };
-
-      utterance.onerror = (event) => {
-        console.error('❌ Erro na fala:', event);
-        setIsSpeaking(false);
-        resolve();
-      };
-
-      // ✅ FALA COM PAUSA INICIAL PARA SOAR NATURAL
-      setTimeout(() => {
-        window.speechSynthesis.speak(utterance);
-      }, 300);
-    });
+    } catch (error) {
+      console.error('❌ Erro na fala:', error);
+    }
   };
 
   // ✅ EXTRAIR NOME DA FALA DO USUÁRIO
@@ -270,10 +199,8 @@ const NutriAI = () => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
     }
-    window.speechSynthesis.cancel();
     setIsActive(false);
     setIsListening(false);
-    setIsSpeaking(false);
     setConversation([]);
   };
 
@@ -458,10 +385,10 @@ const NutriAI = () => {
             ))}
             
             {/* ✅ INDICADOR DE STATUS */}
-            {(isListening || isSpeaking) && (
+            {(isListening || isPlaying) && (
               <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
                 {isListening && '🎤 Ouvindo... Fale agora!'}
-                {isSpeaking && '🔊 NutriAI falando...'}
+                {isPlaying && '🔊 NutriAI falando...'}
               </div>
             )}
           </div>
