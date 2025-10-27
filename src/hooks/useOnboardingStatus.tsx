@@ -15,35 +15,29 @@ export const useOnboardingStatus = () => {
         return;
       }
 
-      // 1️⃣ Primeiro tenta ler do localStorage
-      const stored = localStorage.getItem('onboardingCompleted');
-      if (stored === 'true') {
-        setOnboardingCompleted(true);
-        setLoading(false);
-        return;
-      }
-
-      // 2️⃣ Busca do backend (caso ainda não esteja salvo)
       try {
+        // 🔍 1️⃣ Busca direto do backend, sem confiar apenas no localStorage
         const { data, error } = await supabase
           .from('profiles')
           .select('onboarding_completed')
-          .eq('user_id', user.id)
+          .eq('id', user.id) // ✅ usa o ID correto do perfil
           .single();
 
         if (error) {
           console.error('Erro ao buscar status do onboarding:', error);
           setOnboardingCompleted(false);
+          localStorage.setItem('onboardingCompleted', 'false');
         } else {
-          const completed = data?.onboarding_completed || false;
+          const completed = !!data?.onboarding_completed;
           setOnboardingCompleted(completed);
-          
-          // 3️⃣ Salva localmente para futuros logins
+
+          // ✅ Sempre atualiza o localStorage
           localStorage.setItem('onboardingCompleted', completed ? 'true' : 'false');
         }
       } catch (error) {
         console.error('Erro ao verificar onboarding:', error);
         setOnboardingCompleted(false);
+        localStorage.setItem('onboardingCompleted', 'false');
       } finally {
         setLoading(false);
       }
