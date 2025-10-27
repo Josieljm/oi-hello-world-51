@@ -67,18 +67,15 @@ const OnboardingFlow = () => {
         // Salvar no Supabase usando upsert para criar ou atualizar
         const { error } = await supabase
           .from('profiles')
-          .upsert({
-            id: user.id,
-            user_id: user.id,
+          .update({
             name: data.name,
             age: age,
             weight: data.weight,
             height: data.height,
             fitness_goal: fitnessGoal,
             onboarding_completed: true
-          }, {
-            onConflict: 'id'
-          });
+          })
+          .eq('user_id', user.id);
 
         if (error) {
           console.error('Erro ao salvar perfil:', error);

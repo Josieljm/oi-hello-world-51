@@ -20,7 +20,7 @@ export const useOnboardingStatus = () => {
         const { data, error } = await supabase
           .from('profiles')
           .select('onboarding_completed')
-          .eq('id', user.id) // ✅ usa o ID correto do perfil
+          .eq('user_id', user.id)
           .single();
 
         if (error) {
