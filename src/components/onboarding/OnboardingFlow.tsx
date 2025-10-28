@@ -86,6 +86,9 @@ const OnboardingFlow = () => {
           return;
         }
 
+        // Garantir que a transação foi completada antes de navegar
+        await new Promise(resolve => setTimeout(resolve, 300));
+
         // Também manter no localStorage como backup
         const completeUserData = {
           name: data.name,
