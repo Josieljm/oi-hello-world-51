@@ -20,13 +20,18 @@ const Index = () => {
 
   // Redirecionar para onboarding se não completado
   useEffect(() => {
-    if (!user || loading) return;
+    if (!user) return; // Se não tem usuário, para.
+
+    // IMPEDE qualquer decisão de navegação até que o status de onboarding seja carregado.
+    if (loading) return;
 
     const currentPath = location.pathname;
 
     if (!onboardingCompleted && currentPath !== "/onboarding") {
+      // Usuário logado, onboarding PENDENTE, envia para /onboarding.
       navigate("/onboarding");
     } else if (onboardingCompleted && currentPath === "/onboarding") {
+      // Usuário logado, onboarding COMPLETO, envia para /dashboard.
       navigate("/dashboard");
     }
   }, [user, onboardingCompleted, loading, location, navigate]);
