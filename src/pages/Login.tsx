@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,13 +10,22 @@ import { Button } from "@/components/ui/button";
 const Login = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const { onboardingCompleted, loading: onboardingLoading } = useOnboardingStatus();
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!user) return;
+    
+    // Aguarda carregamento do status de onboarding
+    if (loading || onboardingLoading) return;
+
+    // Redireciona com base no status do onboarding
+    if (onboardingCompleted) {
       navigate("/dashboard");
+    } else {
+      navigate("/onboarding");
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, onboardingLoading, onboardingCompleted, navigate]);
 
   const handleGoogleLogin = async () => {
     try {
