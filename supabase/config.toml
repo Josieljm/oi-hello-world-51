@@ -1,10 +1,1 @@
-project_id = "prileztkuamxebeorzjd"
-
-[functions.analyze-food]
-verify_jwt = true
-
-[functions.text-to-speech]
-verify_jwt = false
-
-[functions.nutri-ai-chat]
-verify_jwt = false
+project_id = "lpjapvbhylycjlnaalcr"
